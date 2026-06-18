@@ -241,6 +241,7 @@ function render() {
       entry.category,
       entry.document_no,
       entry.issued_date_raw,
+      entry.source_quality,
       entry.source_title,
       pageLabel(entry),
     ].filter(Boolean);
@@ -252,6 +253,9 @@ function render() {
     }
 
     node.querySelector(".snippet").innerHTML = highlight(makeSnippet(entry, terms), terms);
+    if (entry.completeness_note) {
+      node.querySelector(".snippet").title = entry.completeness_note;
+    }
     const sourceUrl = node.querySelector(".source-url");
     const links = sourceLinks(entry);
     if (links) {

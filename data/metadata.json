@@ -6,6 +6,13 @@
   "interpretation_entries": 634,
   "pdf_interpretation_entries": 610,
   "mohw_web_entries": 24,
+  "source_quality_counts": {
+    "彙編節錄": 558,
+    "參照摘要": 47,
+    "完整公文格式": 5,
+    "完整附件公文": 21,
+    "官方網頁文字": 3
+  },
   "notes": [
     "printed_page is the page number printed in the compilation.",
     "physical_page is the page number in the PDF file.",

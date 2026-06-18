@@ -23,6 +23,25 @@ DOC_RE = re.compile(
 ARTICLE_RE = re.compile(r"第\s*(\d+(?:-\d+)?)\s*條")
 PRINTED_PAGE_RE = re.compile(r"^\s*(\d{1,3})\s*$")
 MAIN_INTERPRETATION_RE = re.compile(r"(護理人員法|護理機構分類設置標準)解釋[彙彚]編")
+TRAILING_STATUTE_RE = re.compile(
+    r"\n\s*(?:第[一二三四五六七八九十]+章[^\n]*\n|第\s*\d+(?:-\d+)?\s*條\s)"
+)
+TRAILING_SECTION_RE = re.compile(
+    r"\n\s*(?:[一二三四五六七八九十]+[、.．]\s*)?"
+    r"(?:護理機構分類設置標準解釋[彚彙]編|附錄[一二三四五六七八九十]+)"
+)
+COMPILATION_PAGE_HEADER_RE = re.compile(
+    r"\s*(?:護理人員法|護理機構分類設置標準)解釋[彚彙]編"
+    r"(?:\s+第\s*[\d\s至到、,-]+條)?\s+\d{1,3}\s*"
+)
+FORMAL_END_RE = re.compile(
+    r"(正本[:：]|副本[:：]|抄本[:：]|第\s*\d+\s*頁\s*共\s*\d+\s*頁|"
+    r"院長|部長|署長|主任委員|局長|處長|司長)"
+)
+COMPILATION_END_RE = re.compile(
+    r"(復請\s*查照|請\s*查照|請查照|請參考|請卓處|請辦理|"
+    r"辦理[。.]|在案[。.]|論處[。.]|認定[。.]|參考[。.]|查照[。.])"
+)
 
 
 def normalize_text(text: str) -> str:
@@ -156,6 +175,60 @@ def make_keywords(entry: dict) -> list[str]:
     return keywords
 
 
+def remove_trailing_statute_text(body: str) -> str:
+    if "主旨" not in body and "說明" not in body and "解釋彚編" not in body and "解釋彙編" not in body:
+        return body
+    section_match = TRAILING_SECTION_RE.search(body)
+    if section_match and section_match.start() > 120:
+        return body[: section_match.start()].rstrip()
+    for match in TRAILING_STATUTE_RE.finditer(body):
+        if match.start() < 80:
+            continue
+        prefix = body[: match.start()].rstrip()
+        is_late_statute_block = match.start() > max(100, int(len(body) * 0.55)) and prefix.endswith(("。", ")", "）"))
+        if (
+            is_late_statute_block
+            or COMPILATION_END_RE.search(prefix[-300:])
+            or "（註" in prefix[-500:]
+            or "(註" in prefix[-500:]
+        ):
+            return prefix
+    return body
+
+
+def remove_compilation_page_headers(body: str) -> str:
+    body = COMPILATION_PAGE_HEADER_RE.sub(" ", body)
+    body = re.sub(r"[ \t]{2,}", " ", body)
+    body = re.sub(r"\n[ \t]+", "\n", body)
+    return body.strip()
+
+
+def clean_entry_body(body: str) -> str:
+    previous = None
+    current = body
+    for _ in range(5):
+        if current == previous:
+            break
+        previous = current
+        current = remove_trailing_statute_text(current)
+        current = remove_compilation_page_headers(current)
+    return current
+
+
+def classify_source_quality(entry: dict) -> tuple[str, str]:
+    body = entry.get("body", "")
+    tail = body[-900:]
+    if entry.get("source_type") == "官方網頁":
+        if FORMAL_END_RE.search(tail):
+            return "完整附件公文", "官方網頁附件已抽出正式函文，尾端含正本、副本、頁碼或署名等公文結尾資訊。"
+        return "官方網頁文字", "官方網頁未提供可抽文字的完整附件，保留網頁主內容或掃描附件摘要。"
+    if len(body) < 120 or "請參閱P" in body or "請參閱 P" in body:
+        return "參照摘要", "彙編中此筆為短摘要或參照其他頁碼，非完整公文全文。"
+    if FORMAL_END_RE.search(tail):
+        return "完整公文格式", "來源文字尾端含正本、副本、頁碼或署名等公文結尾資訊。"
+    return "彙編節錄", "108年彙編多數未保留正本、副本或署名欄；本筆已依下一封函或下一條文邊界切分。"
+
+
 def read_pages() -> list[dict]:
     reader = PdfReader(str(PDF_PATH))
     pages = []
@@ -248,6 +321,7 @@ def build_interpretations(pages: list[dict]) -> list[dict]:
 def finalize_entry(entry: dict) -> dict:
     body = "\n".join(part["text"] for part in entry["body_parts"] if part["text"].strip())
     body = normalize_text(body)
+    body = clean_entry_body(body)
     result = {k: v for k, v in entry.items() if not k.startswith("_") and k != "body_parts"}
     result["title"] = make_title(body)
     result["body"] = body
@@ -279,6 +353,8 @@ def write_csv(path: Path, entries: list[dict]) -> None:
         "start_physical_page",
         "end_physical_page",
         "keywords",
+        "source_quality",
+        "completeness_note",
         "body",
         "drive_url",
         "source_url",
@@ -313,6 +389,8 @@ def write_sqlite(path: Path, entries: list[dict], pages: list[dict]) -> None:
           start_physical_page INTEGER,
           end_physical_page INTEGER,
           keywords TEXT,
+          source_quality TEXT,
+          completeness_note TEXT,
           body TEXT,
           snippet TEXT,
           drive_url TEXT,
@@ -367,6 +445,8 @@ def write_sqlite(path: Path, entries: list[dict], pages: list[dict]) -> None:
             entry["start_physical_page"],
             entry["end_physical_page"],
             "、".join(entry["keywords"]),
+            entry.get("source_quality", ""),
+            entry.get("completeness_note", ""),
             entry["body"],
             entry["snippet"],
             entry.get("drive_url", ""),
@@ -375,7 +455,7 @@ def write_sqlite(path: Path, entries: list[dict], pages: list[dict]) -> None:
             entry.get("source_title", ""),
         )
         conn.execute(
-            "INSERT INTO interpretations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO interpretations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             values,
         )
         conn.execute(
@@ -408,8 +488,21 @@ def main() -> None:
         entries.extend(web_entries)
 
     for index, entry in enumerate(entries, start=1):
+        if entry.get("source_type") != "官方網頁":
+            cleaned_body = clean_entry_body(entry.get("body", ""))
+            entry["body"] = cleaned_body
+            entry["title"] = make_title(cleaned_body)
+            entry["snippet"] = compact(cleaned_body)[:320]
         entry["id"] = f"interp-{index:04d}"
         entry["keywords"] = make_keywords(entry)
+        source_quality, completeness_note = classify_source_quality(entry)
+        entry["source_quality"] = source_quality
+        entry["completeness_note"] = completeness_note
+
+    quality_counts = {}
+    for entry in entries:
+        quality = entry.get("source_quality", "")
+        quality_counts[quality] = quality_counts.get(quality, 0) + 1
 
     metadata = {
         "source_title": "護理人員法解釋彙編108年5月.pdf",
@@ -419,6 +512,7 @@ def main() -> None:
         "interpretation_entries": len(entries),
         "pdf_interpretation_entries": len(entries) - len(web_entries),
         "mohw_web_entries": len(web_entries),
+        "source_quality_counts": quality_counts,
         "notes": [
             "printed_page is the page number printed in the compilation.",
             "physical_page is the page number in the PDF file.",
