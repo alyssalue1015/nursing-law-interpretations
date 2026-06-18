@@ -126,7 +126,7 @@ def extract_detail(item: dict) -> dict:
         try:
             pdf_data, pdf_content_type = fetch_bytes(link["url"])
             pdf_text, saved = extract_pdf_text(pdf_data, item, link["title"])
-            attachments.append({**link, "text": pdf_text[:12000]})
+            attachments.append({**link, "text": pdf_text})
             if saved:
                 saved_files.append(saved)
             time.sleep(0.1)
