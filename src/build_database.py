@@ -242,9 +242,6 @@ def build_interpretations(pages: list[dict]) -> list[dict]:
     if current:
         entries.append(finalize_entry(current))
 
-    for index, entry in enumerate(entries, start=1):
-        entry["id"] = f"interp-{index:04d}"
-        entry["keywords"] = make_keywords(entry)
     return entries
 
 
@@ -284,6 +281,8 @@ def write_csv(path: Path, entries: list[dict]) -> None:
         "keywords",
         "body",
         "drive_url",
+        "source_url",
+        "list_url",
     ]
     with path.open("w", encoding="utf-8-sig", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=fields)
@@ -317,6 +316,8 @@ def write_sqlite(path: Path, entries: list[dict], pages: list[dict]) -> None:
           body TEXT,
           snippet TEXT,
           drive_url TEXT,
+          source_url TEXT,
+          list_url TEXT,
           source_title TEXT
         )
         """
@@ -368,11 +369,13 @@ def write_sqlite(path: Path, entries: list[dict], pages: list[dict]) -> None:
             "、".join(entry["keywords"]),
             entry["body"],
             entry["snippet"],
-            entry["drive_url"],
-            entry["source_title"],
+            entry.get("drive_url", ""),
+            entry.get("source_url", ""),
+            entry.get("list_url", ""),
+            entry.get("source_title", ""),
         )
         conn.execute(
-            "INSERT INTO interpretations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO interpretations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             values,
         )
         conn.execute(
@@ -397,6 +400,16 @@ def main() -> None:
     WEB_DATA_DIR.mkdir(parents=True, exist_ok=True)
     pages = read_pages()
     entries = build_interpretations(pages)
+    web_source_path = DATA_DIR / "mohw_web_sources.json"
+    web_entries = []
+    if web_source_path.exists():
+        web_payload = json.loads(web_source_path.read_text(encoding="utf-8"))
+        web_entries = web_payload.get("entries", [])
+        entries.extend(web_entries)
+
+    for index, entry in enumerate(entries, start=1):
+        entry["id"] = f"interp-{index:04d}"
+        entry["keywords"] = make_keywords(entry)
 
     metadata = {
         "source_title": "護理人員法解釋彙編108年5月.pdf",
@@ -404,10 +417,13 @@ def main() -> None:
         "drive_file_id": "1IEo7JO0CoxnfXCeiRm87BLzYfexqwZH7",
         "pdf_pages": len(pages),
         "interpretation_entries": len(entries),
+        "pdf_interpretation_entries": len(entries) - len(web_entries),
+        "mohw_web_entries": len(web_entries),
         "notes": [
             "printed_page is the page number printed in the compilation.",
             "physical_page is the page number in the PDF file.",
             "Entries are split by ROC date plus official document number patterns.",
+            "MOHW web entries come from https://nurse.mohw.gov.tw/lp-125-2.html and https://nurse.mohw.gov.tw/lp-126-2.html.",
         ],
     }
 

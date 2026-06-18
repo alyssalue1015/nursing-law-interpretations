@@ -143,6 +143,7 @@ function escapeHtml(text) {
 }
 
 function pageLabel(entry) {
+  if (entry.source_url) return "官方網頁";
   const start = entry.start_printed_page;
   const end = entry.end_printed_page;
   if (!start) return "頁碼待校";
@@ -210,6 +211,7 @@ function render() {
       entry.category,
       entry.document_no,
       entry.issued_date_raw,
+      entry.source_title,
       pageLabel(entry),
     ].filter(Boolean);
     for (const text of chipTexts) {
@@ -220,6 +222,12 @@ function render() {
     }
 
     node.querySelector(".snippet").innerHTML = highlight(entry.snippet, terms);
+    const sourceUrl = node.querySelector(".source-url");
+    if (entry.source_url) {
+      sourceUrl.innerHTML = `<a href="${escapeHtml(entry.source_url)}" target="_blank" rel="noreferrer">開啟來源網頁</a>`;
+    } else {
+      sourceUrl.remove();
+    }
     node.querySelector("pre").textContent = entry.body;
     results.append(node);
   }

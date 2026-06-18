@@ -185,6 +185,15 @@ h2 {
   line-height: 1.7;
 }
 
+.source-url {
+  margin-top: 10px;
+}
+
+.source-url a {
+  color: var(--blue);
+  font-weight: 800;
+}
+
 mark {
   background: var(--mark);
   color: inherit;
