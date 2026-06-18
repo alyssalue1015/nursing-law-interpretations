@@ -16,7 +16,7 @@ DRIVE_URL = "https://drive.google.com/file/d/1IEo7JO0CoxnfXCeiRm87BLzYfexqwZH7/v
 
 
 DOC_RE = re.compile(
-    r"(?P<date>\d{2,3}\s*[.．/年]\s*\d{1,2}\s*(?:[.．/月]\s*\d{1,2}\s*日?)?)"
+    r"(?m)^\s*(?P<date>\d{2,3}\s*[.．/年]\s*\d{1,2}\s*(?:[.．/月]\s*\d{1,2}\s*日?)?)"
     r"\s*(?P<docno>[\u4e00-\u9fffA-Za-z（）()○0-9第字_\-\.．\s]{0,35}?字第\s*[A-Za-z0-9]{5,}\s*號)"
     r"\s*(?:函|令|書函)?"
 )

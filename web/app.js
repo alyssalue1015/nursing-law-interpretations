@@ -126,7 +126,7 @@ function scoreEntryAny(entry, terms) {
 
 function highlight(text, terms) {
   let output = escapeHtml(text || "");
-  for (const term of terms.sort((a, b) => b.length - a.length)) {
+  for (const term of [...terms].sort((a, b) => b.length - a.length)) {
     const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     output = output.replace(new RegExp(escapedTerm, "gi"), (match) => `<mark>${match}</mark>`);
   }
@@ -148,6 +148,36 @@ function pageLabel(entry) {
   const end = entry.end_printed_page;
   if (!start) return "頁碼待校";
   return start === end ? `第 ${start} 頁` : `第 ${start}-${end} 頁`;
+}
+
+function makeSnippet(entry, terms) {
+  const fallback = entry.snippet || "";
+  if (!terms.length) return fallback;
+
+  const body = entry.body || "";
+  const positions = terms
+    .map((term) => ({ term, index: body.indexOf(term) }))
+    .filter(({ index }) => index >= 0)
+    .sort((a, b) => a.index - b.index);
+
+  if (!positions.length) return fallback;
+
+  const start = Math.max(0, positions[0].index - 90);
+  const end = Math.min(body.length, positions[0].index + 260);
+  const prefix = start > 0 ? "..." : "";
+  const suffix = end < body.length ? "..." : "";
+  return prefix + body.slice(start, end).replace(/\s+/g, " ").trim() + suffix;
+}
+
+function sourceLinks(entry) {
+  const links = [];
+  if (entry.source_url) {
+    links.push(`<a href="${escapeHtml(entry.source_url)}" target="_blank" rel="noreferrer">開啟來源網頁</a>`);
+  }
+  if (entry.drive_url) {
+    links.push(`<a href="${escapeHtml(entry.drive_url)}" target="_blank" rel="noreferrer">開啟來源 PDF</a>`);
+  }
+  return links.join("　");
 }
 
 function render() {
@@ -221,10 +251,11 @@ function render() {
       chips.append(chip);
     }
 
-    node.querySelector(".snippet").innerHTML = highlight(entry.snippet, terms);
+    node.querySelector(".snippet").innerHTML = highlight(makeSnippet(entry, terms), terms);
     const sourceUrl = node.querySelector(".source-url");
-    if (entry.source_url) {
-      sourceUrl.innerHTML = `<a href="${escapeHtml(entry.source_url)}" target="_blank" rel="noreferrer">開啟來源網頁</a>`;
+    const links = sourceLinks(entry);
+    if (links) {
+      sourceUrl.innerHTML = links;
     } else {
       sourceUrl.remove();
     }

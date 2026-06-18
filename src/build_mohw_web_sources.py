@@ -222,6 +222,12 @@ def normalize_entry(item: dict, detail: dict) -> dict:
     }
 
 
+def is_duplicate_compilation(entry: dict) -> bool:
+    title = entry.get("title", "")
+    body = entry.get("body", "")
+    return "解釋彙編" in title and len(body) > 100_000
+
+
 def roc_to_iso(raw: str) -> str:
     nums = re.findall(r"\d+", raw)
     if len(nums) >= 3:
@@ -244,6 +250,8 @@ def main() -> None:
             except Exception as exc:
                 detail = {"body": item["title"], "attachments": [], "saved_files": [], "error": str(exc)}
             entry = normalize_entry(item, detail)
+            if is_duplicate_compilation(entry):
+                continue
             all_entries.append(entry)
             time.sleep(0.15)
 
