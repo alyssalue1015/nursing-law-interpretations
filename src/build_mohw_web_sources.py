@@ -4,6 +4,7 @@ import json
 import re
 import ssl
 import time
+import unicodedata
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
@@ -63,6 +64,18 @@ def compact(text: str) -> str:
     return re.sub(r"\s+", " ", html.unescape(text)).strip()
 
 
+def normalize_text(text: str) -> str:
+    text = unicodedata.normalize("NFKC", text)
+    text = text.replace("\ufeff", "")
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", text)
+    text = re.sub(r"(?m)^\s*<>\s*$", "", text)
+    text = re.sub(r"\s*<>\s*", "\n", text)
+    text = re.sub(r"[ \t\r\f\v]+", " ", text)
+    text = re.sub(r"\n[ \t]+", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
 def clean_title(raw: str) -> str:
     text = strip_tags(raw)
     text = re.sub(r"^\d+\s*", "", text)
@@ -114,17 +127,19 @@ def extract_file_links(markup: str, base_url: str) -> list[dict]:
 
 def extract_detail(item: dict) -> dict:
     data, content_type = fetch_bytes(item["source_url"])
-    if "pdf" in content_type.lower() or item["source_url"].lower().endswith(".pdf"):
+    if is_pdf_response(data, content_type, item["source_url"]):
         text, saved = extract_pdf_text(data, item)
         return {"body": text, "attachments": [], "saved_files": [saved] if saved else []}
 
     markup = decode_html(data)
-    text = strip_tags(extract_main_content(markup))
+    text = normalize_text(strip_tags(extract_main_content(markup)))
     attachments = []
     saved_files = []
     for link in extract_file_links(markup, item["source_url"]):
         try:
             pdf_data, pdf_content_type = fetch_bytes(link["url"])
+            if not is_pdf_response(pdf_data, pdf_content_type, link["url"]):
+                raise ValueError("downloaded attachment is not a PDF")
             pdf_text, saved = extract_pdf_text(pdf_data, item, link["title"])
             attachments.append({**link, "text": pdf_text})
             if saved:
@@ -133,14 +148,27 @@ def extract_detail(item: dict) -> dict:
         except Exception as exc:
             attachments.append({**link, "error": str(exc)})
 
-    body_parts = [text]
-    for attachment in attachments:
-        if attachment.get("text"):
-            body_parts.append(f"附件：{attachment['title']}\n{attachment['text']}")
+    attachment_texts = [
+        f"附件：{attachment['title']}\n{attachment['text']}"
+        for attachment in attachments
+        if attachment.get("text")
+    ]
+    body_parts = attachment_texts or [text]
     return {"body": "\n\n".join(part for part in body_parts if part), "attachments": attachments, "saved_files": saved_files}
 
 
+def is_pdf_response(data: bytes, content_type: str, url: str) -> bool:
+    return (
+        data.lstrip().startswith(b"%PDF")
+        or "pdf" in content_type.lower()
+        or url.lower().endswith(".pdf")
+    )
+
+
 def extract_main_content(markup: str) -> str:
+    match = re.search(r'(?is)<section class="cp">(.*?)</section>', markup)
+    if match:
+        return match.group(1)
     match = re.search(r'(?is)<div id="center".*?</h2>(.*?)(?:<section class="fatfooter"|<footer>)', markup)
     if match:
         return match.group(1)
@@ -162,14 +190,14 @@ def extract_pdf_text(data: bytes, item: dict, title: str | None = None) -> tuple
     parts = []
     for index, page in enumerate(reader.pages, start=1):
         page_text = page.extract_text() or ""
-        page_text = page_text.strip()
+        page_text = normalize_text(page_text)
         if page_text:
             parts.append(f"[附件PDF第 {index} 頁]\n{page_text}")
     return "\n\n".join(parts).strip(), str(path.relative_to(ROOT))
 
 
 def normalize_entry(item: dict, detail: dict) -> dict:
-    body = detail.get("body") or item["title"]
+    body = normalize_text(detail.get("body") or item["title"])
     return {
         "source_title": "衛福部護助e起來法規解釋函",
         "source_type": "官方網頁",
