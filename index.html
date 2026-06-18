@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>護理人員法解釋彙編查詢</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="toolbar" aria-label="查詢工具">
+        <div class="title-block">
+          <h1>護理人員法解釋彙編查詢</h1>
+          <p id="metaLine">資料載入中</p>
+        </div>
+        <a class="source-link" href="https://drive.google.com/file/d/1IEo7JO0CoxnfXCeiRm87BLzYfexqwZH7/view?usp=drivesdk" target="_blank" rel="noreferrer">開啟來源 PDF</a>
+      </section>
+
+      <section class="search-panel" aria-label="搜尋">
+        <label for="query">輸入疑問或關鍵字</label>
+        <div class="search-row">
+          <input id="query" type="search" autocomplete="off" placeholder="例如：產後護理收費、照顧服務員餵藥、醫療輔助行為" />
+          <button id="clearBtn" type="button">清除</button>
+        </div>
+        <div class="filters">
+          <select id="articleFilter" aria-label="條文篩選">
+            <option value="">全部條文</option>
+          </select>
+          <select id="categoryFilter" aria-label="分類篩選">
+            <option value="">全部分類</option>
+          </select>
+          <select id="sortMode" aria-label="排序">
+            <option value="score">相關性排序</option>
+            <option value="page">頁碼排序</option>
+            <option value="date">日期排序</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="summary" aria-live="polite">
+        <strong id="resultCount">0 筆</strong>
+        <span id="queryHint">請輸入關鍵字開始查詢。</span>
+      </section>
+
+      <section id="results" class="results" aria-label="搜尋結果"></section>
+    </main>
+
+    <template id="resultTemplate">
+      <article class="result-item">
+        <div class="result-top">
+          <h2></h2>
+          <span class="score"></span>
+        </div>
+        <div class="chips"></div>
+        <p class="snippet"></p>
+        <details>
+          <summary>展開原文</summary>
+          <pre></pre>
+        </details>
+      </article>
+    </template>
+
+    <script src="./data/metadata.js"></script>
+    <script src="./data/interpretations.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
