@@ -55,6 +55,13 @@ p {
   color: var(--muted);
 }
 
+.top-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .source-link,
 button {
   min-height: 42px;
@@ -67,6 +74,15 @@ button {
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
+}
+
+.alt-link {
+  background: white;
+  color: var(--blue);
+}
+
+.alt-link:hover {
+  color: white;
 }
 
 .source-link:hover,
@@ -236,6 +252,10 @@ pre {
     display: inline-flex;
     align-items: center;
     margin-top: 14px;
+  }
+
+  .top-actions {
+    justify-content: flex-start;
   }
 
   .search-row,
