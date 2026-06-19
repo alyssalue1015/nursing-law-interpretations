@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>護理立場模擬器</title>
+    <link rel="stylesheet" href="./styles.css?v=20260619-simulator" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="toolbar">
+        <div>
+          <p class="eyebrow">護理人員法函釋比附</p>
+          <h1>護理立場模擬器</h1>
+          <p id="metaLine">資料載入中</p>
+        </div>
+        <a class="source-link" href="../index.html">回查詢庫</a>
+      </section>
+
+      <section class="input-panel" aria-label="情境輸入">
+        <label for="scenario">輸入遇到的問題或情境</label>
+        <div class="input-row">
+          <textarea id="scenario" rows="4" placeholder="例如：幼兒園聘護理人員做健康照護與衛生教育是否需要執登"></textarea>
+          <button id="simulateBtn" type="button">模擬立場</button>
+        </div>
+        <div class="quick-tags" aria-label="常用情境">
+          <button type="button" data-example="學校健康中心生活輔導員持護理師證書支援學生照護是否要辦執業登記">學校健康中心</button>
+          <button type="button" data-example="幼兒園聘護理人員做健康照護與衛生教育是否需要執登">幼兒園執登</button>
+          <button type="button" data-example="非醫事人員可否幫學生抽痰或照顧管路傷口">非醫事人員照護</button>
+          <button type="button" data-example="護理人員於醫師指示下執行X光照相或抽動脈血是否可行">醫療輔助行為</button>
+        </div>
+      </section>
+
+      <section class="summary" aria-live="polite">
+        <strong id="matchCount">0 個主題</strong>
+        <span id="matchHint">請輸入情境後按「模擬立場」。</span>
+      </section>
+
+      <section id="matches" class="matches" aria-label="模擬結果"></section>
+
+      <section class="review-link">
+        <h2>完整主題審核</h2>
+        <p>目前是草稿版，先用來確認主題、立場與代表函釋是否可行。確認後再接共同來源擷取器。</p>
+        <a href="./topic_review.html">開啟完整主題表</a>
+      </section>
+    </main>
+
+    <template id="topicTemplate">
+      <article class="topic">
+        <div class="topic-top">
+          <div>
+            <p class="topic-group"></p>
+            <h2></h2>
+          </div>
+          <span class="score"></span>
+        </div>
+        <p class="position"></p>
+        <div class="columns">
+          <div>
+            <h3>判斷問題</h3>
+            <ul class="questions"></ul>
+          </div>
+          <div>
+            <h3>可能結論</h3>
+            <ul class="outputs"></ul>
+          </div>
+        </div>
+        <h3>代表來源</h3>
+        <ul class="sources"></ul>
+      </article>
+    </template>
+
+    <script src="./data/simulator_topics.js?v=20260619-simulator"></script>
+    <script src="./app.js?v=20260619-simulator"></script>
+  </body>
+</html>
